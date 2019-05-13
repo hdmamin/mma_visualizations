@@ -8,3 +8,5 @@
 *.csv
 .*
 !.gitignore
+*.pkl
+old_plots/
