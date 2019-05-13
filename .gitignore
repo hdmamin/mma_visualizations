@@ -1,3 +1,10 @@
 .idea/
 .ipynb_checkpoints
 .DS_Store
+*.xcf
+*.html
+*.twb
+*.docx
+*.csv
+.*
+!.gitignore

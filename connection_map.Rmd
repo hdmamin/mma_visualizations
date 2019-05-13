@@ -1,0 +1,208 @@
+---
+title: "R Notebook"
+output: html_notebook
+fig_width: 10
+fig_height: 6
+---
+
+
+```{r}
+library(tidyverse)
+library(geosphere)
+library(maps)
+library(ggmap)
+library(reshape2)
+```
+
+```{r}
+df <- read_csv('data/fights_merged.csv')
+```
+
+```{r}
+str(df)
+```
+
+```{r}
+df %>% 
+  select('locality_1', 'locality_2', 'country_1', 'country_2') %>%
+  head(3) %>% 
+  mutate_geocode(locality_1)
+```
+
+```{r}
+locs <- df %>% 
+  select('locality_1', 'locality_2') %>% 
+  stack() %>% 
+  unique() %>% 
+  select('values') %>% 
+  unique() %>% 
+  drop_na()
+```
+
+
+```{r}
+geocodes <- locs %>% mutate_geocode(values)
+```
+
+```{r}
+df <- df %>% 
+  left_join(geocodes, by=c('locality_1' = 'values')) %>%
+  left_join(geocodes, by=c('locality_2' = 'values'), suffix=c('_1', '_2'))
+```
+
+```{r}
+df %>% select('locality_1', 'locality_2', 'lat_1', 'lon_1', 'lat_2', 'lon_2') %>% drop_na()
+```
+
+```{r}
+write_csv(df, 'data/lat_lon.csv')
+```
+
+############################################
+Read from file w/ lat and lon
+############################################
+
+```{r}
+df <- read_csv('data/lat_lon.csv')
+```
+
+
+
+```{r}
+df_notnull <- df %>% drop_na('lat_1', 'lon_1', 'lat_2', 'lon_2')
+```
+
+
+```{r}
+# Generate points for city-level map.
+points <- gcIntermediate(df_notnull[, c('lon_1', 'lat_1')],
+                         df_notnull[, c('lon_2', 'lat_2')],
+                         addStartEnd = TRUE,
+                         breakAtDateLine = TRUE,
+                         sp=TRUE,
+                         n=100
+                         )
+```
+
+```{r}
+# Generate UNIQUE points for city-level map.
+df_u <- df_notnull %>% select(matches('lat|lon')) %>% unique()
+city_points_u <- gcIntermediate(df_u[, c('lon_1', 'lat_1')],
+                         df_u[, c('lon_2', 'lat_2')],
+                         addStartEnd = TRUE,
+                         breakAtDateLine = TRUE,
+                         sp=TRUE,
+                         n=10
+                         )
+```
+
+```{r}
+# City-level, straight, UNIQUE.
+png('map_city_straight_unique.png', width=1200, height=600)
+par(cex=2)
+map('world', fill=TRUE, col='black', bg=rgb(.15, .27, .51), mar=c(2, 0, 2, 0))
+title('Hometowns of Opposing Fighters')
+lines(df_u[, c('lon_1', 'lat_1', 'lon_2', 'lat_2')],
+      col=alpha(rgb(.86, .85, .64), .1), lwd=.75)
+dev.off()
+```
+
+```{r}
+# City-level, curved, unique.
+map('world', fill=TRUE, col='black', bg=rgb(.15, .27, .51))
+title('Hometowns of Opposing Fighters')
+lines(city_points_u, col=alpha(rgb(.86, .85, .64), .1), lwd=.75)
+```
+
+
+```{r}
+# City-level, curved.
+# png('map_connections_city.png', width=1200, height=600)
+map('world', fill=TRUE, col='black', bg=rgb(.15, .27, .51))
+title('Hometowns of Opposing Fighters')
+lines(points, col=alpha(rgb(.86, .85, .64), .1), lwd=.75)
+# dev.off()
+```
+
+
+
+##########################################
+Load country level df
+##########################################
+```{r}
+countries <- read_csv('data/country_lat_lon.csv')
+head(countries, 3)
+```
+
+```{r}
+df_merged <- df %>% left_join(countries, by=c('country_1'='Country')) %>% 
+  left_join(countries, by=c('country_2'='Country'))
+```
+
+```{r}
+# Country-level map, straight.
+# png('connection_map.png', width=1200, height=600, res=120)
+map('world', fill=TRUE, col='black', bg=rgb(.15, .27, .51))
+title('Hometowns of Opposing Fighters')
+lines(df_merged[, c('Lon.x', 'Lat.x', 'Lon.y', 'Lat.y')], 
+      col=alpha(rgb(.86, .85, .64), .25), 
+      lwd=.5)
+# dev.off()
+```
+
+
+```{r}
+# Generate intermediate points for country-level coords.
+merged_notnull <- df_merged %>% select(matches('lat|lon')) %>% 
+  filter_all(all_vars(!is.na(.)))
+country_points <- gcIntermediate(merged_notnull[, c('Lon.x', 'Lat.x')],
+               merged_notnull[, c('Lon.y', 'Lat.y')],
+               addStartEnd = TRUE,
+               breakAtDateLine = TRUE,
+               sp=TRUE,
+               n=40
+               )
+```
+
+```{r}
+# Country-level map, curved.
+# png('map_connections.png', width=1200, height=600, res=120)
+map('world', fill=TRUE, col='black', bg=rgb(.15, .27, .51))
+title('Hometowns of Opposing Fighters')
+lines(country_points, col=alpha(rgb(.86, .85, .64), .15), lwd=.25)
+# dev.off()
+```
+
+
+```{r}
+# Generate points for country-level unique.
+merged_u <- merged_notnull %>% select(Lon.x, Lat.x, Lon.y, Lat.y) %>% unique()
+country_points_unique <- gcIntermediate(merged_u[, c('Lon.x', 'Lat.x')],
+                         merged_u[, c('Lon.y', 'Lat.y')],
+                         addStartEnd = TRUE,
+                         breakAtDateLine = TRUE,
+                         sp=TRUE,
+                         n=100
+                         )
+```
+
+```{r}
+# Country-level, curved, unique.
+# png('connection_map_country_u.png', width=1200, height=600, res=120)
+map('world', fill=TRUE, col='black', bg=rgb(.15, .27, .51))
+title('Hometowns of Opposing Fighters')
+lines(country_points_unique, col=alpha(rgb(.86, .85, .64), .5), lwd=.25)
+# dev.off()
+```
+
+
+```{r}
+# Country-level, straight, unique.
+# png('map_country_straight_u.png', width=1200, height=600, res=120)
+map('world', fill=TRUE, col='black', bg=rgb(.15, .27, .51))
+title('Hometowns of Opposing Fighters')
+lines(merged_u[, c('Lon.x', 'Lat.x', 'Lon.y', 'Lat.y')], 
+      col=alpha(rgb(.86, .85, .64), .5), 
+      lwd=.5)
+# dev.off()
+```
