@@ -2,13 +2,10 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
-import numpy as np
 import pandas as pd
-import plotly
 import plotly.graph_objs as go
 
 
-# CSS = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 CSS = ['https://codepen.io/Hmamin/pen/VOjQxN.css']
 app = dash.Dash(__name__, external_stylesheets=CSS)
 server = app.server
@@ -76,7 +73,7 @@ continuously update the stats without scraping the entire dataset over again.
 """,
                          className='notes')
 
-app.layout = html.Div([html.H1('MMA Stats'),
+app.layout = html.Div([html.H1('MMA Statistical Visualization Tool'),
                        html.Div(['Number of Teams', slider], className='row'),
                        box_div,
                        html.Div(stat_dcc, className='row'),
