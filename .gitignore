@@ -3,7 +3,7 @@
 .DS_Store
 *.xcf
 *.html
-*.twb
+Book1.twb
 *.docx
 *.csv
 .*
